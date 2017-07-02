@@ -1,4 +1,4 @@
-local ver = "0.02"
+local ver = "0.03"
 
 
 if FileExist(COMMON_PATH.."MixLib.lua") then
@@ -171,7 +171,7 @@ OnTick(function (myHero)
 			CastSpell(RHydra)
             end
 
-	    if CorkiMenu.Combo.W:Value() and Ready(_W) and ValidTarget(target, 600) then
+	    if CorkiMenu.Combo.W:Value() and Ready(_W) and ValidTarget(target, GetCastRange(myHero,_W)) then
 			CastSkillShot(_W, target)
 	    end
 	    
