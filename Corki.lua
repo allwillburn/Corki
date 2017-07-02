@@ -1,4 +1,4 @@
-local ver = "0.01"
+local ver = "0.02"
 
 
 if FileExist(COMMON_PATH.."MixLib.lua") then
@@ -13,6 +13,7 @@ if GetObjectName(GetMyHero()) ~= "Corki" then return end
 
 
 require("DamageLib")
+require("OpenPredict")
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -33,11 +34,12 @@ local SetDCP, SkinChanger = 0
 local CorkiMenu = Menu("Corki", "Corki")
 
 CorkiMenu:SubMenu("Combo", "Combo")
-
 CorkiMenu.Combo:Boolean("Q", "Use Q in combo", true)
+CorkiMenu.Combo:Slider("Qpred", "Q Hit Chance", 3,0,10,1)
 CorkiMenu.Combo:Boolean("W", "Use W in combo", true)
 CorkiMenu.Combo:Boolean("E", "Use E in combo", true)
 CorkiMenu.Combo:Boolean("R", "Use R in combo", true)
+CorkiMenu.Combo:Slider("Rpred", "R Hit Chance", 3,0,10,1)
 CorkiMenu.Combo:Slider("RX", "X Enemies to Cast R",3,1,5,1)
 CorkiMenu.Combo:Boolean("Cutlass", "Use Cutlass", true)
 CorkiMenu.Combo:Boolean("Tiamat", "Use Tiamat", true)
@@ -52,9 +54,12 @@ CorkiMenu:SubMenu("AutoMode", "AutoMode")
 CorkiMenu.AutoMode:Boolean("Level", "Auto level spells", false)
 CorkiMenu.AutoMode:Boolean("Ghost", "Auto Ghost", false)
 CorkiMenu.AutoMode:Boolean("Q", "Auto Q", false)
+CorkiMenu.AutoMode:Slider("Qpred", "Q Hit Chance", 3,0,10,1)
 CorkiMenu.AutoMode:Boolean("W", "Auto W", false)
 CorkiMenu.AutoMode:Boolean("E", "Auto E", false)
 CorkiMenu.AutoMode:Boolean("R", "Auto R", false)
+CorkiMenu.AutoMode:Slider("Rpred", "R Hit Chance", 3,0,10,1)
+
 
 CorkiMenu:SubMenu("LaneClear", "LaneClear")
 CorkiMenu.LaneClear:Boolean("Q", "Use Q", true)
@@ -63,19 +68,27 @@ CorkiMenu.LaneClear:Boolean("E", "Use E", true)
 CorkiMenu.LaneClear:Boolean("RHydra", "Use RHydra", true)
 CorkiMenu.LaneClear:Boolean("Tiamat", "Use Tiamat", true)
 
+
 CorkiMenu:SubMenu("Harass", "Harass")
 CorkiMenu.Harass:Boolean("Q", "Use Q", true)
 CorkiMenu.Harass:Boolean("W", "Use W", true)
 
+
 CorkiMenu:SubMenu("KillSteal", "KillSteal")
 CorkiMenu.KillSteal:Boolean("Q", "KS w Q", true)
+CorkiMenu.KillSteal:Slider("Qpred", "Q Hit Chance", 3,0,10,1)
 CorkiMenu.KillSteal:Boolean("E", "KS w E", true)
+CorkiMenu.KillSteal:Boolean("R", "KS w R", true)
+CorkiMenu.KillSteal:Slider("Rpred", "R Hit Chance", 3,0,10,1)
+
 
 CorkiMenu:SubMenu("AutoIgnite", "AutoIgnite")
 CorkiMenu.AutoIgnite:Boolean("Ignite", "Ignite if killable", true)
 
+
 CorkiMenu:SubMenu("Drawings", "Drawings")
 CorkiMenu.Drawings:Boolean("DQ", "Draw Q Range", true)
+
 
 CorkiMenu:SubMenu("SkinChanger", "SkinChanger")
 CorkiMenu.SkinChanger:Boolean("Skin", "UseSkinChanger", true)
@@ -90,6 +103,10 @@ OnTick(function (myHero)
         local BOTRK = GetItemSlot(myHero, 3153)
         local Cutlass = GetItemSlot(myHero, 3144)
         local Randuins = GetItemSlot(myHero, 3143)
+	local CorkiQ = {delay = 0.3, range = 825, width = 250, speed = 1000}
+        local CorkiR = {delay = 0.2, range = 1225, width = 75, speed = 2000} 
+		
+		
 
 	--AUTO LEVEL UP
 	if CorkiMenu.AutoMode.Level:Value() then
@@ -135,11 +152,12 @@ OnTick(function (myHero)
 			 CastSkillShot(_E, target)
 	    end
 
-            if CorkiMenu.Combo.Q:Value() and Ready(_Q) and ValidTarget(target, 825) then
-		     if target ~= nil then 
-                         CastTargetSpell(target, _Q)
-                     end
-            end
+            if CorkiMenu.Combo.Q:Value() and Ready(_Q) and ValidTarget(target, 1000) then
+                 local QPred = GetPrediction(target,CorkiQ)
+                 if QPred.hitChance > (CorkiMenu.Combo.Qpred:Value() * 0.1) then
+                           CastSkillShot(_Q, QPred.castPos)
+                 end
+            end	
 
             if CorkiMenu.Combo.Tiamat:Value() and Tiamat > 0 and Ready(Tiamat) and ValidTarget(target, 350) then
 			CastSpell(Tiamat)
@@ -158,9 +176,12 @@ OnTick(function (myHero)
 	    end
 	    
 	    
-            if CorkiMenu.Combo.R:Value() and Ready(_R) and ValidTarget(target, 1225) and (EnemiesAround(myHeroPos(), 1225) >= CorkiMenu.Combo.RX:Value()) then
-			CastSkillShot(_R, target)
-            end
+            if CorkiMenu.Combo.R:Value() and Ready(_R) and ValidTarget(target, 2000) then
+                 local RPred = GetPrediction(target,CorkiR)
+                 if RPred.hitChance > (CorkiMenu.Combo.Rpred:Value() * 0.1) and not RPred:mCollision(1) then
+                           CastSkillShot(_R, RPred.castPos)
+                 end
+            end	
 
           end
 
@@ -188,16 +209,25 @@ OnTick(function (myHero)
 
         for _, enemy in pairs(GetEnemyHeroes()) do
                 
-                if IsReady(_Q) and ValidTarget(enemy, 700) and CorkiMenu.KillSteal.Q:Value() and GetHP(enemy) < getdmg("Q",enemy) then
-		         if target ~= nil then 
-                                      CastTargetSpell(target, _Q)
-		         end
-                end 
+                if CorkiMenu.KillSteal.Q:Value() and Ready(_Q) and ValidTarget(target, 1000) then
+                 local QPred = GetPrediction(target,CorkiQ)
+                    if QPred.hitChance > (CorkiMenu.KillSteal.Qpred:Value() * 0.1) then
+                           CastSkillShot(_Q, QPred.castPos)
+                    end
+                end	
+
 
                 if IsReady(_E) and ValidTarget(enemy, 600) and CorkiMenu.KillSteal.E:Value() and GetHP(enemy) < getdmg("E",enemy) then
 		                      CastSkillShot(_E, target)
   
                 end
+			
+		if CorkiMenu.KillSteal.R:Value() and Ready(_R) and ValidTarget(target, 2000) then
+                 local RPred = GetPrediction(target,CorkiR)
+                  if RPred.hitChance > (CorkiMenu.KillSteal.Rpred:Value() * 0.1) and not RPred:mCollision(1) then
+                           CastSkillShot(_R, RPred.castPos)
+                  end
+                end	
       end
 
       if Mix:Mode() == "LaneClear" then
@@ -224,11 +254,13 @@ OnTick(function (myHero)
           end
       end
         --AutoMode
-        if CorkiMenu.AutoMode.Q:Value() then        
-          if Ready(_Q) and ValidTarget(target, 825) then
-		      CastTargetSpell(target, _Q)
-          end
-        end 
+        if CorkiMenu.AutoMode.Q:Value() and Ready(_Q) and ValidTarget(target, 1000) then
+                 local QPred = GetPrediction(target,CorkiQ)
+                 if QPred.hitChance > (CorkiMenu.AutoMode.Qpred:Value() * 0.1) then
+                           CastSkillShot(_Q, QPred.castPos)
+                 end
+        end	
+
         if CorkiMenu.AutoMode.W:Value() then        
           if Ready(_W) and ValidTarget(target, 600) then
 	  	      CastSkillShot(_W, target)
@@ -239,11 +271,12 @@ OnTick(function (myHero)
 		      CastSkillShot(_E, target)
 	  end
         end
-        if CorkiMenu.AutoMode.R:Value() then        
-	  if Ready(_R) and ValidTarget(target, 1225) then
-		     CastSkillShot(_R, target)
-	  end
-        end
+        if CorkiMenu.AutoMode.R:Value() and Ready(_R) and ValidTarget(target, 2000) then
+                 local RPred = GetPrediction(target,CorkiR)
+                 if RPred.hitChance > (CorkiMenu.KillSteal.Rpred:Value() * 0.1) and not RPred:mCollision(1) then
+                           CastSkillShot(_R, RPred.castPos)
+                 end
+            end	
                 
 	--AUTO GHOST
 	if CorkiMenu.AutoMode.Ghost:Value() then
