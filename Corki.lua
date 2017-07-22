@@ -1,4 +1,4 @@
-local ver = "0.03"
+local ver = "0.04"
 
 
 if FileExist(COMMON_PATH.."MixLib.lua") then
@@ -209,7 +209,7 @@ OnTick(function (myHero)
 
         for _, enemy in pairs(GetEnemyHeroes()) do
                 
-                if CorkiMenu.KillSteal.Q:Value() and Ready(_Q) and ValidTarget(target, 1000) then
+                if CorkiMenu.KillSteal.Q:Value() and Ready(_Q) and ValidTarget(target, 1000) and GetHP(enemy) < getdmg("Q",enemy) then
                  local QPred = GetPrediction(target,CorkiQ)
                     if QPred.hitChance > (CorkiMenu.KillSteal.Qpred:Value() * 0.1) then
                            CastSkillShot(_Q, QPred.castPos)
@@ -222,7 +222,7 @@ OnTick(function (myHero)
   
                 end
 			
-		if CorkiMenu.KillSteal.R:Value() and Ready(_R) and ValidTarget(target, 2000) then
+		if CorkiMenu.KillSteal.R:Value() and Ready(_R) and ValidTarget(target, 2000) and GetHP(enemy) < getdmg("R",enemy) then
                  local RPred = GetPrediction(target,CorkiR)
                   if RPred.hitChance > (CorkiMenu.KillSteal.Rpred:Value() * 0.1) and not RPred:mCollision(1) then
                            CastSkillShot(_R, RPred.castPos)
